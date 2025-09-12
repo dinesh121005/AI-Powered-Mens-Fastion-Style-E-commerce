@@ -19,8 +19,7 @@ const commonFeatureRouter = require("./routes/common/feature-routes");
 const User = require("./models/User");
 const bcrypt = require("bcryptjs");
 
-//create a database connection -> u can also
-//create a separate file for this and then import/use that file here
+
 
 mongoose
   .connect(process.env.MONGODB_URI, {
