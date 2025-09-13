@@ -10,4 +10,5 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  base: "/AI-Powered-Mens-Fastion-Style-E-commerce/", // 👈 important for GitHub Pages
 });
