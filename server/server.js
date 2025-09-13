@@ -1,4 +1,4 @@
-require("dotenv").config();
+require('dotenv').config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
@@ -19,10 +19,11 @@ const commonFeatureRouter = require("./routes/common/feature-routes");
 const User = require("./models/User");
 const bcrypt = require("bcryptjs");
 
-
+console.log('MONGO_URI:', process.env.MONGO_URI);
+console.log('Type:', typeof process.env.MONGO_URI);
 
 mongoose
-  .connect(process.env.MONGODB_URI, {
+  .connect(process.env.MONGO_URI.trim(), {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })

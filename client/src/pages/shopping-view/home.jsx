@@ -8,13 +8,11 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchAllFilteredProducts,
-  fetchProductDetails,
 } from "@/store/shop/products-slice";
 import ShoppingProductTile from "@/components/shopping-view/product-tile";
 import { useNavigate } from "react-router-dom";
 import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
 import { useToast } from "@/components/ui/use-toast";
-import ProductDetailsDialog from "@/components/shopping-view/product-details";
 import { getFeatureImages } from "@/store/common-slice";
 import ShoppingFooter from "@/components/shopping-view/footer";
 
@@ -29,11 +27,9 @@ const brandsWithIcon = [
 
 function ShoppingHome() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const { productList, productDetails } = useSelector(
+  const { productList } = useSelector(
     (state) => state.shopProducts
   );
-
-  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
 
   const { user } = useSelector((state) => state.auth);
 
@@ -53,10 +49,6 @@ function ShoppingHome() {
     navigate(`/shop/listing`);
   }
 
-  function handleGetProductDetails(getCurrentProductId) {
-    dispatch(fetchProductDetails(getCurrentProductId));
-  }
-
   function handleAddtoCart(getCurrentProductId) {
     dispatch(
       addToCart({
@@ -73,10 +65,6 @@ function ShoppingHome() {
       }
     });
   }
-
-  useEffect(() => {
-    if (productDetails !== null) setOpenDetailsDialog(true);
-  }, [productDetails]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -187,7 +175,6 @@ function ShoppingHome() {
               ? productList.slice(0, 8).map((productItem) => (
                   <ShoppingProductTile
                     key={productItem._id}
-                    handleGetProductDetails={handleGetProductDetails}
                     product={productItem}
                     handleAddtoCart={handleAddtoCart}
                   />
@@ -205,7 +192,6 @@ function ShoppingHome() {
               ? productList.slice(4, 12).map((productItem) => (
                   <ShoppingProductTile
                     key={productItem._id}
-                    handleGetProductDetails={handleGetProductDetails}
                     product={productItem}
                     handleAddtoCart={handleAddtoCart}
                   />
@@ -278,12 +264,6 @@ function ShoppingHome() {
       </section>
 
       <ShoppingFooter />
-
-      <ProductDetailsDialog
-        open={openDetailsDialog}
-        setOpen={setOpenDetailsDialog}
-        productDetails={productDetails}
-      />
     </div>
   );
 }
