@@ -1,9 +1,7 @@
-import ProductDetailsDialog from "@/components/shopping-view/product-details";
 import ShoppingProductTile from "@/components/shopping-view/product-tile";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
-import { fetchProductDetails } from "@/store/shop/products-slice";
 import {
   getSearchResults,
   resetSearchResults,
@@ -14,11 +12,9 @@ import { useSearchParams } from "react-router-dom";
 
 function SearchProducts() {
   const [keyword, setKeyword] = useState("");
-  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { searchResults } = useSelector((state) => state.shopSearch);
-  const { productDetails } = useSelector((state) => state.shopProducts);
 
   const { user } = useSelector((state) => state.auth);
 
@@ -73,15 +69,6 @@ function SearchProducts() {
     });
   }
 
-  function handleGetProductDetails(getCurrentProductId) {
-    console.log(getCurrentProductId);
-    dispatch(fetchProductDetails(getCurrentProductId));
-  }
-
-  useEffect(() => {
-    if (productDetails !== null) setOpenDetailsDialog(true);
-  }, [productDetails]);
-
   console.log(searchResults, "searchResults");
 
   return (
@@ -102,18 +89,13 @@ function SearchProducts() {
       ) : null}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
         {searchResults.map((item) => (
+          // eslint-disable-next-line react/jsx-key
           <ShoppingProductTile
             handleAddtoCart={handleAddtoCart}
             product={item}
-            handleGetProductDetails={handleGetProductDetails}
           />
         ))}
       </div>
-      <ProductDetailsDialog
-        open={openDetailsDialog}
-        setOpen={setOpenDetailsDialog}
-        productDetails={productDetails}
-      />
     </div>
   );
 }

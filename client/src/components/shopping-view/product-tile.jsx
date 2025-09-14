@@ -50,18 +50,15 @@ function ShoppingProductTile({
             </span>
           </div>
           <div className="flex justify-between items-center mb-2">
-            <span
-              className={`${
-                product?.salePrice > 0 ? "line-through" : ""
-              } text-lg font-semibold text-primary`}
-            >
-              ₹{product?.price}
+            <span className="text-lg font-semibold text-primary">
+              ₹
+              {product?.salePrice > 0 ? product.salePrice : product?.price}
             </span>
-            {product?.salePrice > 0 ? (
-              <span className="text-lg font-semibold text-primary">
-                ₹{product?.salePrice}
+            {product?.salePrice > 0 && (
+              <span className="text-lg font-semibold text-muted-foreground line-through">
+                ₹{product?.price}
               </span>
-            ) : null}
+            )}
           </div>
         </CardContent>
       </div>

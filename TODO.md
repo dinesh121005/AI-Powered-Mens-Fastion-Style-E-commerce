@@ -1,24 +1,11 @@
-# Replace PayPal with Razorpay API Integration
-
-## Backend Changes
-- [ ] Remove paypal-rest-sdk dependency from server/package.json
-- [ ] Install razorpay npm package
-- [ ] Replace server/helpers/paypal.js with razorpay.js helper
-- [ ] Update server/controllers/shop/order-controller.js to use Razorpay for order creation
-- [ ] Update capturePayment function to verify Razorpay payment
-- [ ] Update environment variables to use Razorpay keys instead of PayPal
-
-## Frontend Changes
-- [ ] Identify and update payment-related frontend files (e.g., paypal-return.jsx, checkout.jsx)
-- [ ] Replace PayPal checkout with Razorpay checkout integration
-- [ ] Update payment success/failure handling
-
-## Testing
-- [ ] Test order creation with Razorpay
-- [ ] Test payment capture and order confirmation
-- [ ] Verify stock updates and cart deletion after successful payment
-- [ ] Test error handling for failed payments
-
-## Environment Setup
-- [ ] Update .env file with Razorpay API keys (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
-- [ ] Remove PayPal environment variables
+- [x] Modify handleTryOn in product-details-page.jsx to use dynamic DeepAR effect based on product category
+- [x] Add cleanup for DeepAR instance on component unmount
+- [x] Improve error handling and UI feedback for virtual try-on
+- [x] Test the virtual try-on feature in the browser
+- [x] Create FastAPI backend for AI-powered try-on using Stable Diffusion
+- [x] Removed product-details.jsx dialog component as user requested only the separate page
+- [x] Fixed price display inconsistency in product-tile.jsx to match product-details-page.jsx
+- [ ] Install Python dependencies for FastAPI backend (fastapi, uvicorn, torch, diffusers, rembg, pillow)
+- [ ] Run FastAPI server on port 8000
+- [ ] Test the /tryon endpoint with sample images
+- [ ] Integrate FastAPI try-on backend with frontend (optional)
