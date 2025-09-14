@@ -26,8 +26,8 @@ const createOrder = async (req, res) => {
         payment_method: "paypal",
       },
       redirect_urls: {
-        return_url: "http://localhost:5173/shop/paypal-return",
-        cancel_url: "http://localhost:5173/shop/paypal-cancel",
+        return_url: "http://localhost:3000/shop/paypal-return",
+        cancel_url: "http://localhost:3000/shop/checkout",
       },
       transactions: [
         {
@@ -35,27 +35,26 @@ const createOrder = async (req, res) => {
             items: cartItems.map((item) => ({
               name: item.title,
               sku: item.productId,
-              price: item.price.toFixed(2),
+              price: item.price.toString(),
               currency: "USD",
               quantity: item.quantity,
             })),
           },
           amount: {
             currency: "USD",
-            total: totalAmount.toFixed(2),
+            total: totalAmount.toString(),
           },
-          description: "description",
+          description: "Payment for order",
         },
       ],
     };
 
-    paypal.payment.create(create_payment_json, async (error, paymentInfo) => {
+    paypal.payment.create(create_payment_json, async function (error, payment) {
       if (error) {
         console.log(error);
-
         return res.status(500).json({
           success: false,
-          message: "Error while creating paypal payment",
+          message: "Error while creating PayPal payment",
         });
       } else {
         const newlyCreatedOrder = new Order({
@@ -64,18 +63,19 @@ const createOrder = async (req, res) => {
           cartItems,
           addressInfo,
           orderStatus,
-          paymentMethod,
+          paymentMethod: "paypal",
           paymentStatus,
           totalAmount,
           orderDate,
           orderUpdateDate,
           paymentId,
           payerId,
+          paypalOrderId: payment.id,
         });
 
         await newlyCreatedOrder.save();
 
-        const approvalURL = paymentInfo.links.find(
+        const approvalURL = payment.links.find(
           (link) => link.rel === "approval_url"
         ).href;
 
@@ -83,6 +83,7 @@ const createOrder = async (req, res) => {
           success: true,
           approvalURL,
           orderId: newlyCreatedOrder._id,
+          paymentId: payment.id,
         });
       }
     });
@@ -99,45 +100,59 @@ const capturePayment = async (req, res) => {
   try {
     const { paymentId, payerId, orderId } = req.body;
 
-    let order = await Order.findById(orderId);
+    paypal.payment.execute(
+      paymentId,
+      { payer_id: payerId },
+      async function (error, payment) {
+        if (error) {
+          console.log(error);
+          return res.status(400).json({
+            success: false,
+            message: "Payment execution failed",
+          });
+        } else {
+          let order = await Order.findById(orderId);
 
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order can not be found",
-      });
-    }
+          if (!order) {
+            return res.status(404).json({
+              success: false,
+              message: "Order can not be found",
+            });
+          }
 
-    order.paymentStatus = "paid";
-    order.orderStatus = "confirmed";
-    order.paymentId = paymentId;
-    order.payerId = payerId;
+          order.paymentStatus = "paid";
+          order.orderStatus = "confirmed";
+          order.paymentId = paymentId;
+          order.payerId = payerId;
 
-    for (let item of order.cartItems) {
-      let product = await Product.findById(item.productId);
+          for (let item of order.cartItems) {
+            let product = await Product.findById(item.productId);
 
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Not enough stock for this product ${product.title}`,
-        });
+            if (!product) {
+              return res.status(404).json({
+                success: false,
+                message: `Not enough stock for this product ${product.title}`,
+              });
+            }
+
+            product.totalStock -= item.quantity;
+
+            await product.save();
+          }
+
+          const getCartId = order.cartId;
+          await Cart.findByIdAndDelete(getCartId);
+
+          await order.save();
+
+          res.status(200).json({
+            success: true,
+            message: "Order confirmed",
+            data: order,
+          });
+        }
       }
-
-      product.totalStock -= item.quantity;
-
-      await product.save();
-    }
-
-    const getCartId = order.cartId;
-    await Cart.findByIdAndDelete(getCartId);
-
-    await order.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Order confirmed",
-      data: order,
-    });
+    );
   } catch (e) {
     console.log(e);
     res.status(500).json({

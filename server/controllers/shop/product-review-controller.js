@@ -1,4 +1,3 @@
-const Order = require("../../models/Order");
 const Product = require("../../models/Product");
 const ProductReview = require("../../models/Review");
 
@@ -6,19 +5,6 @@ const addProductReview = async (req, res) => {
   try {
     const { productId, userId, userName, reviewMessage, reviewValue } =
       req.body;
-
-    const order = await Order.findOne({
-      userId,
-      "cartItems.productId": productId,
-      // orderStatus: "confirmed" || "delivered",
-    });
-
-    if (!order) {
-      return res.status(403).json({
-        success: false,
-        message: "You need to purchase product to review it.",
-      });
-    }
 
     const checkExistinfReview = await ProductReview.findOne({
       productId,

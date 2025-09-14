@@ -1,9 +1,24 @@
-# TODO: Remove Product Details Dialog and Ensure Full Navigation to Product Details Page
+# Replace PayPal with Razorpay API Integration
 
-## Tasks
-- [ ] Remove ProductDetailsDialog import and usage from client/src/pages/shopping-view/listing.jsx
-- [ ] Remove productDetails state and related effects from listing.jsx
-- [ ] Remove ProductDetailsDialog import and usage from client/src/pages/shopping-view/home.jsx
-- [ ] Remove productDetails state and related effects from home.jsx
-- [ ] Verify product tile navigation to product-details-page remains intact
-- [ ] Test the changes to ensure no dialog appears and navigation works
+## Backend Changes
+- [ ] Remove paypal-rest-sdk dependency from server/package.json
+- [ ] Install razorpay npm package
+- [ ] Replace server/helpers/paypal.js with razorpay.js helper
+- [ ] Update server/controllers/shop/order-controller.js to use Razorpay for order creation
+- [ ] Update capturePayment function to verify Razorpay payment
+- [ ] Update environment variables to use Razorpay keys instead of PayPal
+
+## Frontend Changes
+- [ ] Identify and update payment-related frontend files (e.g., paypal-return.jsx, checkout.jsx)
+- [ ] Replace PayPal checkout with Razorpay checkout integration
+- [ ] Update payment success/failure handling
+
+## Testing
+- [ ] Test order creation with Razorpay
+- [ ] Test payment capture and order confirmation
+- [ ] Verify stock updates and cart deletion after successful payment
+- [ ] Test error handling for failed payments
+
+## Environment Setup
+- [ ] Update .env file with Razorpay API keys (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
+- [ ] Remove PayPal environment variables

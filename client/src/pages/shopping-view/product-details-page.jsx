@@ -101,6 +101,14 @@ function ProductDetailsPage() {
   function handleAddReview() {
     if (!productDetails || isSubmittingReview) return;
 
+    if (!user?.id) {
+      toast({
+        title: "Please login to submit a review",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmittingReview(true);
 
     dispatch(
@@ -120,6 +128,11 @@ function ProductDetailsPage() {
           title: "Review added successfully!",
         });
       }
+    }).catch((error) => {
+      toast({
+        title: error?.response?.data?.message || "Failed to add review",
+        variant: "destructive",
+      });
     }).finally(() => {
       setIsSubmittingReview(false);
     });
