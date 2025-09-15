@@ -41,7 +41,7 @@ function MenuItems({ setOpen }) {
             navigate(menuItem.path);
             setOpen ? setOpen(false) : null;
           }}
-          className="flex cursor-pointer text-xl items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex cursor-pointer text-xl items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:text-red-500 hover:text-foreground"
         >
           {menuItem.icon}
           <span>{menuItem.label}</span>
@@ -69,13 +69,13 @@ function AdminSideBar({ open, setOpen }) {
           </div>
         </SheetContent>
       </Sheet>
-      <aside className="hidden w-64 flex-col border-r bg-background p-6 lg:flex">
+      <aside className="hidden w-64 flex-col border-r bg-yellow-400 p-6 lg:flex">
         <div
           onClick={() => navigate("/admin/dashboard")}
           className="flex cursor-pointer items-center gap-2"
         >
           <ChartNoAxesCombined size={30} />
-          <h1 className="text-2xl font-extrabold">Admin Panel</h1>
+          <h1 className="text-2xl font-extrabold animate-pulse">Admin Panel</h1>
         </div>
         <MenuItems />
       </aside>
