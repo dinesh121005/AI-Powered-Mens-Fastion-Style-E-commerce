@@ -17,6 +17,7 @@ const shopOrderRouter = require("./routes/shop/order-routes");
 const shopSearchRouter = require("./routes/shop/search-routes");
 const shopReviewRouter = require("./routes/shop/review-routes");
 const commonFeatureRouter = require("./routes/common/feature-routes");
+const huggingfaceRouter = require("./routes/huggingface-routes");
 
 // Models
 const User = require("./models/User");
@@ -86,37 +87,9 @@ app.use("/api/shop/order", shopOrderRouter);
 app.use("/api/shop/search", shopSearchRouter);
 app.use("/api/shop/review", shopReviewRouter);
 app.use("/api/common/feature", commonFeatureRouter);
+app.use("/api/ai", huggingfaceRouter);
 
-// ===== Hugging Face Proxy Route =====
-// Example: Try-On API
-app.post("/api/ai/tryon", async (req, res) => {
-  try {
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/YOUR_MODEL_ID", // Replace with your Hugging Face Space/Model
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.HF_API_TOKEN}`, // from .env
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(req.body),
-      }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return res
-        .status(response.status)
-        .json({ error: "HuggingFace request failed", details: errorText });
-    }
-
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error("Error calling HuggingFace API:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
 
 // Root Check
 app.get("/", (req, res) => {

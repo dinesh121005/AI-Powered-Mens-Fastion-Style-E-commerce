@@ -1,11 +1,6 @@
-- [x] Modify handleTryOn in product-details-page.jsx to use dynamic DeepAR effect based on product category
-- [x] Add cleanup for DeepAR instance on component unmount
-- [x] Improve error handling and UI feedback for virtual try-on
-- [x] Test the virtual try-on feature in the browser
-- [x] Create FastAPI backend for AI-powered try-on using Stable Diffusion
-- [x] Removed product-details.jsx dialog component as user requested only the separate page
-- [x] Fixed price display inconsistency in product-tile.jsx to match product-details-page.jsx
-- [ ] Install Python dependencies for FastAPI backend (fastapi, uvicorn, torch, diffusers, rembg, pillow)
-- [ ] Run FastAPI server on port 8000
-- [ ] Test the /tryon endpoint with sample images
-- [ ] Integrate FastAPI try-on backend with frontend (optional)
+- [x] Update server/package.json to add axios dependency
+- [x] Modify server/server.js to import huggingface-routes.js, remove inline Hugging Face route, and add app.use("/api/ai", huggingfaceRouter)
+- [ ] Run npm install in server directory to install axios (user needs to run manually)
+- [ ] Ensure environment variables TRYON_URL and HF_TOKEN are set in .env file
+- [ ] Test the /api/ai/tryon endpoint
+- [x] Integrate try-on feature in product-details-page.jsx

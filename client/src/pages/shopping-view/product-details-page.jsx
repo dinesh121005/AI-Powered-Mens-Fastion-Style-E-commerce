@@ -27,9 +27,10 @@ function ProductDetailsPage() {
   const [rating, setRating] = useState(0);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [uploadedUserImage, setUploadedUserImage] = useState(null); // user upload image
-  const [tryOnResult, setTryOnResult] = useState(null); // image result from try-on
   const [isTryingOn, setIsTryingOn] = useState(false);
+  const [personImageUrl, setPersonImageUrl] = useState("");
+  const [tryOnResult, setTryOnResult] = useState(null);
+  const [tryOnError, setTryOnError] = useState("");
 
   // Fetch product details
   useEffect(() => {
@@ -93,20 +94,6 @@ function ProductDetailsPage() {
     setRating(getRating);
   }
 
-  function handleReviewImageUpload(e) {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setUploadedUserImage(reader.result); // this is base64 data URI
-      };
-      reader.onerror = () => {
-        console.error("Error reading user image");
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
   function handleAddReview() {
     if (!productDetails || isSubmittingReview) return;
     if (!user?.id) {
@@ -123,14 +110,13 @@ function ProductDetailsPage() {
         userName: user.userName,
         reviewMessage: reviewMsg,
         reviewValue: rating,
-        reviewImage: uploadedUserImage, // send base64 possibly
+        // No image upload logic here anymore
       })
-    )
+      )
       .then((data) => {
         if (data.payload?.success) {
           setRating(0);
           setReviewMsg("");
-          setUploadedUserImage(null);
           dispatch(getReviews(productDetails._id));
           toast({ title: "Review added successfully!" });
         }
@@ -144,44 +130,39 @@ function ProductDetailsPage() {
       .finally(() => setIsSubmittingReview(false));
   }
 
-  // ========== New: Try-On via Hugging Face ==========
-  async function handleTryOnWithHF() {
-    if (!uploadedUserImage) {
-      toast({ title: "Please upload your image first", variant: "destructive" });
-      return;
-    }
-    if (!selectedImage) {
-      toast({ title: "Product image not loaded yet", variant: "destructive" });
+  async function handleTryOn() {
+    if (!personImageUrl.trim()) {
+      toast({ title: "Please provide a person image URL", variant: "destructive" });
       return;
     }
 
     setIsTryingOn(true);
+    setTryOnError("");
+    setTryOnResult(null);
 
     try {
-      const response = await fetch("http://localhost:5000/api/ai/tryon", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await fetch('/api/ai/tryon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          personImage: uploadedUserImage,   // base64 data URI
-          garmentImage: selectedImage,     // you might want to convert product selectedImage to base64 or have your backend accept URLs
-          seed: Math.floor(Math.random() * 1000000),
-        }),
+          garmentImage: productDetails.image,
+          personImage: personImageUrl,
+          seed: 42
+        })
       });
 
-      const resultData = await response.json();
+      const data = await response.json();
 
-      if (response.ok && resultData?.resultImageBase64) {
-        // Assuming your backend returns something like { resultImageBase64: "iVBORw0..." }
-        setTryOnResult(`data:image/png;base64,${resultData.resultImageBase64}`);
+      if (response.ok) {
+        setTryOnResult(data);
+        toast({ title: "Try-on completed!" });
       } else {
-        toast({ title: "Try-On failed, please try again", variant: "destructive" });
-        console.error("HF Try-On error", resultData);
+        setTryOnError(data.error || "Try-on failed");
+        toast({ title: data.error || "Try-on failed", variant: "destructive" });
       }
-    } catch (err) {
-      console.error("Error calling Try-On API", err);
-      toast({ title: "Error connecting to Try-On API", variant: "destructive" });
+    } catch {
+      setTryOnError("Failed to try on");
+      toast({ title: "Failed to try on", variant: "destructive" });
     } finally {
       setIsTryingOn(false);
     }
@@ -220,46 +201,32 @@ function ProductDetailsPage() {
                   }`}
                   onClick={() => {
                     setSelectedImage(img);
-                    setTryOnResult(null); // reset try-on result if product changed
                   }}
                 />
               )
           )}
         </div>
 
-        {/* Try-On Section */}
-        <div className="mt-6">
-          <Label className="block font-semibold mb-2">Upload Your Photo for Try-On</Label>
-          <Input type="file" accept="image/*" onChange={handleReviewImageUpload} />
-          {uploadedUserImage && (
-            <div className="mt-4">
-              <p className="mb-2">Your Uploaded Image:</p>
-              <img
-                src={uploadedUserImage}
-                alt="uploaded user"
-                className="w-full rounded-lg object-cover"
-                style={{ maxHeight: 400 }}
-              />
-            </div>
-          )}
-
-          <Button
-            className="mt-4"
-            onClick={handleTryOnWithHF}
-            disabled={isTryingOn}
-          >
-            {isTryingOn ? "Trying..." : "Try-On Virtual"}
+        {/* AI Try-On Section */}
+        <div className="mt-6 border-t pt-6">
+          <h3 className="text-lg font-semibold mb-4">AI Try-On Feature</h3>
+          <Label htmlFor="personImage" className="block mb-2">Person Image URL</Label>
+          <Input
+            id="personImage"
+            type="url"
+            value={personImageUrl}
+            onChange={(e) => setPersonImageUrl(e.target.value)}
+            placeholder="Enter URL of person image"
+            className="mb-4"
+          />
+          <Button onClick={handleTryOn} disabled={isTryingOn} className="w-full mb-4">
+            {isTryingOn ? "Trying On..." : "Try On"}
           </Button>
-
+          {tryOnError && <p className="text-red-500 mb-2">{tryOnError}</p>}
           {tryOnResult && (
-            <div className="mt-6">
-              <p className="mb-2">Try-On Result:</p>
-              <img
-                src={tryOnResult}
-                alt="try-on result"
-                className="w-full rounded-lg object-cover"
-                style={{ maxHeight: 400 }}
-              />
+            <div>
+              <h4 className="text-md font-medium mb-2">Try-On Result</h4>
+              <img src={tryOnResult.image || tryOnResult.result || tryOnResult} alt="Try-on result" className="w-full rounded-lg" />
             </div>
           )}
         </div>
@@ -370,25 +337,6 @@ function ProductDetailsPage() {
               className="mt-2 mb-2"
               aria-required="true"
             />
-
-            <div className="mb-4">
-              <Label htmlFor="reviewImage" className="mb-1 block font-medium">
-                Upload an image (optional)
-              </Label>
-              <Input
-                type="file"
-                id="reviewImage"
-                accept="image/*"
-                onChange={handleReviewImageUpload}
-              />
-              {uploadedUserImage && (
-                <img
-                  src={uploadedUserImage}
-                  alt="uploaded preview"
-                  className="w-32 h-32 object-cover mt-2 rounded border"
-                />
-              )}
-            </div>
 
             <Button onClick={handleAddReview} disabled={reviewMsg.trim() === ""}>
               Submit Review
