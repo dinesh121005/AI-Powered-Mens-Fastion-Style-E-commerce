@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProductDetails, fetchAllFilteredProducts } from "@/store/shop/products-slice";
@@ -13,11 +13,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import ShoppingProductTile from "@/components/shopping-view/product-tile";
 
-
-
-const DEEPAR_API_KEY =
-  "76ed5a1c4e50c5ba658b44df96c88bbb98dc7260a5cfa15702099774d5593e4f69365fd46ca64";
-
 function ProductDetailsPage() {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -27,66 +22,27 @@ function ProductDetailsPage() {
   const { user } = useSelector((state) => state.auth);
   const { toast } = useToast();
 
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null); // product image display
   const [reviewMsg, setReviewMsg] = useState("");
   const [rating, setRating] = useState(0);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-
-  // New: Image upload for review
-  const [uploadedReviewImage, setUploadedReviewImage] = useState(null);
-
-  // DeepAR state
-  const deeparRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [isDeeparLoading, setIsDeeparLoading] = useState(true);
+  const [uploadedUserImage, setUploadedUserImage] = useState(null); // user upload image
+  const [tryOnResult, setTryOnResult] = useState(null); // image result from try-on
+  const [isTryingOn, setIsTryingOn] = useState(false);
 
   // Fetch product details
   useEffect(() => {
     dispatch(fetchProductDetails(id));
   }, [id, dispatch]);
 
-  // Initialize DeepAR once
-  useEffect(() => {
-    const loadDeepAR = async () => {
-      try {
-        const deeparModule = await import(
-          "https://cdn.jsdelivr.net/npm/deepar/js/deepar.esm.js"
-        );
-        const DeepAR = deeparModule.default;
-
-        const deeparInstance = new DeepAR({
-          licenseKey: DEEPAR_API_KEY,
-          canvas: canvasRef.current,
-          previewWidth: 640,
-          previewHeight: 480,
-        });
-
-        await deeparInstance.startVideo(true); // start webcam
-        deeparRef.current = deeparInstance;
-        setIsDeeparLoading(false);
-      } catch (error) {
-        console.error("Failed to load DeepAR:", error);
-        setIsDeeparLoading(false);
-      }
-    };
-
-    loadDeepAR();
-
-    return () => {
-      if (deeparRef.current) {
-        deeparRef.current.destroy();
-      }
-    };
-  }, []);
-
-  // Handle product details updates
+  // When product details load
   useEffect(() => {
     if (productDetails) {
       setSelectedImage(productDetails.image);
       dispatch(getReviews(productDetails._id));
 
-      // Fetch related products
+      // Related products
       dispatch(
         fetchAllFilteredProducts({
           filterParams: {
@@ -96,7 +52,7 @@ function ProductDetailsPage() {
           sortParams: "price-lowtohigh",
         })
       ).then((res) => {
-        if (res.payload && res.payload.data) {
+        if (res?.payload?.data) {
           const filtered = res.payload.data.filter(
             (prod) => prod._id !== productDetails._id
           );
@@ -106,44 +62,19 @@ function ProductDetailsPage() {
     }
   }, [productDetails, dispatch]);
 
-  // Example: switch clothing effect
-  const handleTryOn = () => {
-    if (!deeparRef.current) {
+  function handleAddToCart() {
+    if (!productDetails) return;
+
+    const items = cartItems.items || [];
+    const found = items.find((item) => item.productId === productDetails._id);
+    if (found && found.quantity + 1 > productDetails.totalStock) {
       toast({
-        title: "DeepAR not ready yet",
+        title: `Only ${found.quantity} quantity can be added for this item`,
         variant: "destructive",
       });
       return;
     }
 
-    // Replace with your own product-specific .deepar effect file
-    deeparRef.current.switchEffect(
-      0,
-      "clothing",
-      "https://cdn.jsdelivr.net/npm/deepar/effects/aviators"
-    );
-  };
-
-  function handleAddToCart() {
-    if (!productDetails) return;
-
-    let getCartItems = cartItems.items || [];
-
-    if (getCartItems.length) {
-      const indexOfCurrentItem = getCartItems.findIndex(
-        (item) => item.productId === productDetails._id
-      );
-      if (indexOfCurrentItem > -1) {
-        const getQuantity = getCartItems[indexOfCurrentItem].quantity;
-        if (getQuantity + 1 > productDetails.totalStock) {
-          toast({
-            title: `Only ${getQuantity} quantity can be added for this item`,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-    }
     dispatch(
       addToCart({
         userId: user?.id,
@@ -153,9 +84,7 @@ function ProductDetailsPage() {
     ).then((data) => {
       if (data?.payload?.success) {
         dispatch(fetchCartItems(user?.id));
-        toast({
-          title: "Product is added to cart",
-        });
+        toast({ title: "Product added to cart" });
       }
     });
   }
@@ -164,22 +93,24 @@ function ProductDetailsPage() {
     setRating(getRating);
   }
 
-  // Handle review image upload
   function handleReviewImageUpload(e) {
     const file = e.target.files[0];
     if (file) {
-      setUploadedReviewImage(URL.createObjectURL(file)); // Preview
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedUserImage(reader.result); // this is base64 data URI
+      };
+      reader.onerror = () => {
+        console.error("Error reading user image");
+      };
+      reader.readAsDataURL(file);
     }
   }
 
   function handleAddReview() {
     if (!productDetails || isSubmittingReview) return;
-
     if (!user?.id) {
-      toast({
-        title: "Please login to submit a review",
-        variant: "destructive",
-      });
+      toast({ title: "Please login to submit a review", variant: "destructive" });
       return;
     }
 
@@ -188,22 +119,20 @@ function ProductDetailsPage() {
     dispatch(
       addReview({
         productId: productDetails._id,
-        userId: user?.id,
-        userName: user?.userName,
+        userId: user.id,
+        userName: user.userName,
         reviewMessage: reviewMsg,
         reviewValue: rating,
-        // Optional: You can add uploadedReviewImage to your backend
+        reviewImage: uploadedUserImage, // send base64 possibly
       })
     )
       .then((data) => {
-        if (data.payload.success) {
+        if (data.payload?.success) {
           setRating(0);
           setReviewMsg("");
-          setUploadedReviewImage(null); // Reset uploaded image
+          setUploadedUserImage(null);
           dispatch(getReviews(productDetails._id));
-          toast({
-            title: "Review added successfully!",
-          });
+          toast({ title: "Review added successfully!" });
         }
       })
       .catch((error) => {
@@ -212,17 +141,55 @@ function ProductDetailsPage() {
           variant: "destructive",
         });
       })
-      .finally(() => {
-        setIsSubmittingReview(false);
+      .finally(() => setIsSubmittingReview(false));
+  }
+
+  // ========== New: Try-On via Hugging Face ==========
+  async function handleTryOnWithHF() {
+    if (!uploadedUserImage) {
+      toast({ title: "Please upload your image first", variant: "destructive" });
+      return;
+    }
+    if (!selectedImage) {
+      toast({ title: "Product image not loaded yet", variant: "destructive" });
+      return;
+    }
+
+    setIsTryingOn(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/ai/tryon", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personImage: uploadedUserImage,   // base64 data URI
+          garmentImage: selectedImage,     // you might want to convert product selectedImage to base64 or have your backend accept URLs
+          seed: Math.floor(Math.random() * 1000000),
+        }),
       });
+
+      const resultData = await response.json();
+
+      if (response.ok && resultData?.resultImageBase64) {
+        // Assuming your backend returns something like { resultImageBase64: "iVBORw0..." }
+        setTryOnResult(`data:image/png;base64,${resultData.resultImageBase64}`);
+      } else {
+        toast({ title: "Try-On failed, please try again", variant: "destructive" });
+        console.error("HF Try-On error", resultData);
+      }
+    } catch (err) {
+      console.error("Error calling Try-On API", err);
+      toast({ title: "Error connecting to Try-On API", variant: "destructive" });
+    } finally {
+      setIsTryingOn(false);
+    }
   }
 
   const averageReview =
     reviews && reviews.length > 0
-      ? reviews.reduce(
-          (sum, reviewItem) => sum + reviewItem.reviewValue,
-          0
-        ) / reviews.length
+      ? reviews.reduce((sum, r) => sum + r.reviewValue, 0) / reviews.length
       : 0;
 
   if (!productDetails) {
@@ -231,16 +198,17 @@ function ProductDetailsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-10">
-      {/* Images Section */}
+      {/* Left / Images Section */}
       <div className="col-span-1">
+        {/* Main product image/public view */}
         <img
-          src={selectedImage || productDetails?.image}
+          src={selectedImage || productDetails.image}
           alt={productDetails?.title}
           className="w-full rounded-lg object-cover"
           style={{ aspectRatio: "1 / 1" }}
         />
         <div className="flex gap-4 mt-4 overflow-x-auto">
-          {[productDetails?.image, ...(productDetails?.additionalImages || [])].map(
+          {[productDetails.image, ...(productDetails.additionalImages || [])].map(
             (img, idx) =>
               img && (
                 <img
@@ -248,42 +216,56 @@ function ProductDetailsPage() {
                   src={img}
                   alt={`Thumbnail ${idx}`}
                   className={`w-20 h-20 rounded-lg cursor-pointer object-cover border-2 ${
-                    selectedImage === img
-                      ? "border-primary"
-                      : "border-transparent"
+                    selectedImage === img ? "border-primary" : "border-transparent"
                   }`}
-                  onClick={() => setSelectedImage(img)}
+                  onClick={() => {
+                    setSelectedImage(img);
+                    setTryOnResult(null); // reset try-on result if product changed
+                  }}
                 />
               )
           )}
         </div>
 
-        {/* Virtual Try-On Section */}
+        {/* Try-On Section */}
         <div className="mt-6">
-          <Label className="block font-semibold mb-2">Live Virtual Try-On</Label>
-          {isDeeparLoading ? (
-            <div className="w-full h-96 bg-gray-200 rounded-lg border flex items-center justify-center">
-              <p className="text-gray-500">Loading DeepAR...</p>
+          <Label className="block font-semibold mb-2">Upload Your Photo for Try-On</Label>
+          <Input type="file" accept="image/*" onChange={handleReviewImageUpload} />
+          {uploadedUserImage && (
+            <div className="mt-4">
+              <p className="mb-2">Your Uploaded Image:</p>
+              <img
+                src={uploadedUserImage}
+                alt="uploaded user"
+                className="w-full rounded-lg object-cover"
+                style={{ maxHeight: 400 }}
+              />
             </div>
-          ) : (
-            <canvas
-              ref={canvasRef}
-              width={640}
-              height={480}
-              className="w-full rounded-lg border"
-            />
           )}
+
           <Button
             className="mt-4"
-            onClick={handleTryOn}
-            disabled={isDeeparLoading}
+            onClick={handleTryOnWithHF}
+            disabled={isTryingOn}
           >
-            {isDeeparLoading ? "Loading..." : "Try This Product"}
+            {isTryingOn ? "Trying..." : "Try-On Virtual"}
           </Button>
+
+          {tryOnResult && (
+            <div className="mt-6">
+              <p className="mb-2">Try-On Result:</p>
+              <img
+                src={tryOnResult}
+                alt="try-on result"
+                className="w-full rounded-lg object-cover"
+                style={{ maxHeight: 400 }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Product Info Section */}
+      {/* Right / Product Info Section */}
       <div className="col-span-2 flex flex-col">
         <h1 className="text-4xl font-extrabold mb-4">
           {productDetails?.title}
@@ -309,16 +291,12 @@ function ProductDetailsPage() {
 
         <Button
           className={`w-48 mb-6 ${
-            productDetails?.totalStock === 0
-              ? "opacity-60 cursor-not-allowed"
-              : ""
+            productDetails.totalStock === 0 ? "opacity-60 cursor-not-allowed" : ""
           }`}
-          disabled={productDetails?.totalStock === 0}
+          disabled={productDetails.totalStock === 0}
           onClick={handleAddToCart}
         >
-          {productDetails?.totalStock === 0
-            ? "Out of Stock"
-            : "Add to Cart"}
+          {productDetails.totalStock === 0 ? "Out of Stock" : "Add to Cart"}
         </Button>
 
         <Separator />
@@ -332,43 +310,42 @@ function ProductDetailsPage() {
               {reviews && reviews.length !== 1 ? "s" : ""}
             </span>
           </h2>
-
           {reviews && reviews.length > 0 ? (
             <div className="space-y-6 mb-8">
-              {reviews.map((reviewItem) => (
+              {reviews.map((rev) => (
                 <div
-                  key={reviewItem._id}
+                  key={rev._id}
                   className="p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 flex gap-4"
                   role="article"
-                  aria-label={`Review by ${reviewItem.userName}`}
+                  aria-label={`Review by ${rev.userName}`}
                 >
                   <Avatar className="w-12 h-12 border flex-shrink-0">
                     <AvatarFallback>
-                      {reviewItem?.userName[0].toUpperCase()}
+                      {rev.userName[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col flex-grow">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-lg">
-                        {reviewItem?.userName}
-                      </h3>
-                      {reviewItem.date && (
+                      <h3 className="font-semibold text-lg">{rev.userName}</h3>
+                      {rev.date && (
                         <time
-                          dateTime={new Date(
-                            reviewItem.date
-                          ).toISOString()}
+                          dateTime={new Date(rev.date).toISOString()}
                           className="text-xs text-muted-foreground"
                         >
-                          {new Date(
-                            reviewItem.date
-                          ).toLocaleDateString()}
+                          {new Date(rev.date).toLocaleDateString()}
                         </time>
                       )}
                     </div>
-                    <StarRatingComponent rating={reviewItem?.reviewValue} />
-                    <p className="mt-2 text-muted-foreground">
-                      {reviewItem.reviewMessage}
-                    </p>
+                    <StarRatingComponent rating={rev.reviewValue} />
+                    <p className="mt-2 text-muted-foreground">{rev.reviewMessage}</p>
+                    {rev.reviewImage && (
+                      <img
+                        src={rev.reviewImage}
+                        alt="review pic"
+                        className="mt-2 rounded-lg"
+                        style={{ maxWidth: "200px", objectFit: "cover" }}
+                      />
+                    )}
                   </div>
                 </div>
               ))}
@@ -379,18 +356,11 @@ function ProductDetailsPage() {
             </p>
           )}
 
-          {/* Add Review */}
           <div className="border-t pt-6">
-            <Label
-              htmlFor="reviewMsg"
-              className="mb-2 block font-semibold"
-            >
+            <Label htmlFor="reviewMsg" className="mb-2 block font-semibold">
               Write a review
             </Label>
-            <StarRatingComponent
-              rating={rating}
-              handleRatingChange={handleRatingChange}
-            />
+            <StarRatingComponent rating={rating} handleRatingChange={handleRatingChange} />
             <Input
               id="reviewMsg"
               name="reviewMsg"
@@ -399,10 +369,8 @@ function ProductDetailsPage() {
               placeholder="Write a review..."
               className="mt-2 mb-2"
               aria-required="true"
-              aria-describedby="reviewHelp"
             />
 
-            {/* Image Uploader */}
             <div className="mb-4">
               <Label htmlFor="reviewImage" className="mb-1 block font-medium">
                 Upload an image (optional)
@@ -413,22 +381,17 @@ function ProductDetailsPage() {
                 accept="image/*"
                 onChange={handleReviewImageUpload}
               />
-              {uploadedReviewImage && (
+              {uploadedUserImage && (
                 <img
-                  src={uploadedReviewImage}
-                  alt="Preview"
+                  src={uploadedUserImage}
+                  alt="uploaded preview"
                   className="w-32 h-32 object-cover mt-2 rounded border"
                 />
               )}
             </div>
 
-            <Button
-              onClick={handleAddReview}
-              disabled={reviewMsg.trim() === ""}
-              aria-disabled={reviewMsg.trim() === ""}
-              aria-live="polite"
-            >
-              Submit
+            <Button onClick={handleAddReview} disabled={reviewMsg.trim() === ""}>
+              Submit Review
             </Button>
           </div>
         </div>
@@ -438,7 +401,7 @@ function ProductDetailsPage() {
       <div className="col-span-3 mt-10">
         <h2 className="text-2xl font-bold mb-6">You might also like</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-6">
-          {relatedProducts.length > 0 ? (
+          {relatedProducts.length ? (
             relatedProducts.map((relatedProduct) => (
               <ShoppingProductTile
                 key={relatedProduct._id}
@@ -464,9 +427,7 @@ function ProductDetailsPage() {
                   ).then((data) => {
                     if (data?.payload?.success) {
                       dispatch(fetchCartItems(user?.id));
-                      toast({
-                        title: "Product is added to cart",
-                      });
+                      toast({ title: "Product added to cart!" });
                     }
                   });
                 }}
